@@ -32,7 +32,7 @@ namespace ConsoleApplication
                 Console.WriteLine("------");
 
                 // Discovery
-                HttpResponseMessage response = httpClient.GetAsync($"https://api.reddit.com/r/{subreddit}?limit=25").Result;
+                HttpResponseMessage response = httpClient.GetAsync($"https://api.reddit.com/r/{subreddit}/top?limit=25").Result;
                 string responseDocument = response.Content.ReadAsStringAsync().Result;
 
                 JObject document = JObject.Parse(responseDocument);
