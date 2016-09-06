@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using System.Threading;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ConsoleApplication
 {
@@ -50,8 +52,14 @@ namespace ConsoleApplication
     
         private static void Download(Uri uri, string outputFolder) 
         {
-            FileInfo fi = new FileInfo(Path.Combine(outputFolder, uri.LocalPath.Substring(1)));
-            
+            string fileName = uri.LocalPath;
+            using (MD5 md5Hash = MD5.Create())
+            {
+                fileName = GetMd5Hash(md5Hash, fileName);
+            }
+            string tempFileName = Path.Combine(outputFolder, fileName);
+            FileInfo fi = new FileInfo(tempFileName + ".jpg");
+
             if ( fi.Exists ) return ; // Skip files we've already got, get new ones only.
 
             HttpResponseMessage response = httpClient.GetAsync(uri).Result;
@@ -61,6 +69,27 @@ namespace ConsoleApplication
             {
                 contentStream.CopyTo(writeStream);
             }
+        }
+
+        static string GetMd5Hash(MD5 md5Hash, string input)
+        {
+
+            // Convert the input string to a byte array and compute the hash.
+            byte[] data = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+            // Create a new Stringbuilder to collect the bytes
+            // and create a string.
+            StringBuilder sBuilder = new StringBuilder();
+
+            // Loop through each byte of the hashed data 
+            // and format each one as a hexadecimal string.
+            for (int i = 0; i < data.Length; i++)
+            {
+                sBuilder.Append(data[i].ToString("x2"));
+            }
+
+            // Return the hexadecimal string.
+            return sBuilder.ToString();
         }
     }
     
