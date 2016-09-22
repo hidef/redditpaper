@@ -17,7 +17,7 @@ namespace ConsoleApplication
         public static void Main(string[] args)
         {
             // Configuration
-            string subreddit = "astrophotography";
+            string subreddit = Environment.GetEnvironmentVariable("subreddit") ?? "astrophotography";
             string outputFolder = Environment.GetEnvironmentVariable("outputPath") ?? "tmp";
             int interval = 2.Minutes();
 
