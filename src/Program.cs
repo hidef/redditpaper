@@ -33,18 +33,26 @@ namespace ConsoleApplication
             {
                 Console.WriteLine("------");
 
-                // Discovery
-                HttpResponseMessage response = httpClient.GetAsync($"https://api.reddit.com/r/{subreddit}/top?limit=25").Result;
-                string responseDocument = response.Content.ReadAsStringAsync().Result;
+                try
+                {
+                    // Discovery
+                    HttpResponseMessage response = httpClient.GetAsync($"https://api.reddit.com/r/{subreddit}/top?limit=25").Result;
+                    string responseDocument = response.Content.ReadAsStringAsync().Result;
 
-                JObject document = JObject.Parse(responseDocument);
-                IEnumerable<JToken> tokens = document.SelectTokens("$.data.children..data.url");
-        
-                // Retrieval
-                tokens
-                    .Select(t => new Uri(t.Value<string>()))
-                    .Where(t => t.LocalPath.ToLower().Contains("jpg"))
-                    .ForEach(t => Download(t, outputFolder));
+                    JObject document = JObject.Parse(responseDocument);
+                    IEnumerable<JToken> tokens = document.SelectTokens("$.data.children..data.url");
+            
+                    // Retrieval
+                    tokens
+                        .Select(t => new Uri(t.Value<string>()))
+                        .Where(t => t.LocalPath.ToLower().Contains("jpg"))
+                        .ForEach(t => Download(t, outputFolder));
+                }
+                catch ( Exception ex )
+                {
+                    Console.WriteLine($"Unhandled periodic exception: {ex.GetType().FullName}: {ex.Message}");
+                    Console.WriteLine(ex.StackTrace);
+                }
 
                 Thread.Sleep(interval);
             }
@@ -52,22 +60,30 @@ namespace ConsoleApplication
     
         private static void Download(Uri uri, string outputFolder) 
         {
-            string fileName = uri.LocalPath;
-            using (MD5 md5Hash = MD5.Create())
+            try 
             {
-                fileName = GetMd5Hash(md5Hash, fileName);
+                string fileName = uri.LocalPath;
+                using (MD5 md5Hash = MD5.Create())
+                {
+                    fileName = GetMd5Hash(md5Hash, fileName);
+                }
+                string tempFileName = Path.Combine(outputFolder, fileName);
+                FileInfo fi = new FileInfo(tempFileName + ".jpg");
+
+                if ( fi.Exists ) return ; // Skip files we've already got, get new ones only.
+
+                HttpResponseMessage response = httpClient.GetAsync(uri).Result;
+                Console.WriteLine("FullName: " + fi.FullName);
+                using ( var contentStream = response.Content.ReadAsStreamAsync().Result)
+                using ( var writeStream = fi.OpenWrite())
+                {
+                    contentStream.CopyTo(writeStream);
+                }
             }
-            string tempFileName = Path.Combine(outputFolder, fileName);
-            FileInfo fi = new FileInfo(tempFileName + ".jpg");
-
-            if ( fi.Exists ) return ; // Skip files we've already got, get new ones only.
-
-            HttpResponseMessage response = httpClient.GetAsync(uri).Result;
-            Console.WriteLine("FullName: " + fi.FullName);
-            using ( var contentStream = response.Content.ReadAsStreamAsync().Result)
-            using ( var writeStream = fi.OpenWrite())
+            catch (Exception ex)
             {
-                contentStream.CopyTo(writeStream);
+                Console.WriteLine($"Non-blocking download exception: {ex.GetType().FullName}: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
             }
         }
 
